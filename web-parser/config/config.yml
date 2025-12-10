@@ -1,0 +1,15 @@
+db:
+  host: "mongodb"
+  port: "27017"
+  collection: "items"
+  db: "db"
+
+logic:
+  delay_time: "20s"
+
+kafka:
+  brokers:
+    - "kafka:9092"
+  group: "crawler-group"
+  yandex_topic: "yandex_url-topic"
+  wb: "wb-url-topic"

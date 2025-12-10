@@ -1,0 +1,5 @@
+.env
+mongo-cxx-driver
+.vscode
+ir
+.idea

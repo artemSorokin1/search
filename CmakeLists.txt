@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 3.16)
+project(search_engine CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ВАЖНО: добавляем и корень, и v_noabi
+include_directories(
+    /opt/homebrew/include
+    /opt/homebrew/include/mongocxx/v_noabi
+    /opt/homebrew/include/bsoncxx/v_noabi
+)
+
+link_directories(/opt/homebrew/lib)
+
+add_executable(search_engine
+    main.cpp
+    mongo_client/mongo_client.cpp
+    indexer/indexer.cpp
+    boolean_index/boolean_index.cpp
+    lematization/lematization.cpp
+    tokenizer.cpp
+)
+
+target_link_libraries(search_engine
+    mongocxx
+    bsoncxx
+)
+
+// cd build
+// make -j4
+// ./search_engine

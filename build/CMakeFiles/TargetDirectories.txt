@@ -1,0 +1,3 @@
+/Users/artemsorokin/Desktop/ir/build/CMakeFiles/search_engine.dir
+/Users/artemsorokin/Desktop/ir/build/CMakeFiles/edit_cache.dir
+/Users/artemsorokin/Desktop/ir/build/CMakeFiles/rebuild_cache.dir
