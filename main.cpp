@@ -3,21 +3,20 @@
 #include "indexer/indexer.hpp"
 #include "index.hpp"   
 #include "tokenizer.hpp"
+#include "statistic/statistic.hpp"
 
 int main() {
-    // 1. Создаём Mongo-клиент
     search::MongoClient mongo{"mongodb://localhost:27017", "db"};
 
-    // 2. Создаём индексатор
     search::Indexer indexer;
+    search::Stat stat;
 
-    // 3. Строим индекс по коллекции, например "products"
+    stat.dumpLemmasFromMongo(mongo, "items", "lemmas.txt");
     search::buildIndex(mongo, indexer, "items");
 
     std::cout << "Проиндексировано документов: " << indexer.size() << "\n";
 
-    // 4. Пробуем поиск
-    std::vector<std::string> query = {"датчик"};
+    std::vector<std::string> query = {"ruler"};
     auto resultIds = indexer.getIndex().andQuery(query);
 
     search::Tokenizer t;

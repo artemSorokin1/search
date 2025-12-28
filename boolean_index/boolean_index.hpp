@@ -1,14 +1,11 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
 #include <vector>
 #include <cstdint>
 
-#include "../lematization/lematization.hpp" 
-#include "../tokenizer.hpp"  // твой класс лемматизации
-// tokenize() объяви где-то отдельно и подключи нужный заголовок
-// std::vector<std::string> tokenize(const std::string& text);
+#include "../lematization/lematization.hpp"
+#include "../tokenizer.hpp"
 
 namespace search {
 
@@ -17,27 +14,29 @@ using PostingList = std::vector<DocId>;
 
 class BooleanIndex {
 public:
-    BooleanIndex() = default;
+    explicit BooleanIndex(const std::string& index_file_path = "index.txt");
 
-    // Добавить документ по его внутреннему DocId и тексту (title + description)
     void addDocument(DocId id, const std::string& text);
 
-    // Завершить построение индекса (отсортировать списки, удалить дубликаты)
     void finalize();
 
-    // Получить postings-list для леммы (nullptr, если терм не встречался)
-    const PostingList* getPostings(const std::string& lemma) const;
+    PostingList getPostings(const std::string& lemma) const;
 
-    // Простейший AND-запрос: все термины должны встречаться в документе
     std::vector<DocId> andQuery(const std::vector<std::string>& terms) const;
-
-    // Простейший OR-запрос: хотя бы один термин встречается в документе
     std::vector<DocId> orQuery(const std::vector<std::string>& terms) const;
 
 private:
-    std::unordered_map<std::string, PostingList> index_;
+    std::string index_file_path_;
+
+    std::vector<std::pair<std::string, DocId>> temp_pairs_;
+
+    std::vector<std::pair<std::string, PostingList>> index_;
+
     Lematization lem_;
     Tokenizer tok_;
+
+    void saveToFile() const;
+    PostingList loadPostingsFromFile(const std::string& lemma) const;
 
     static PostingList intersect(const PostingList& a, const PostingList& b);
     static PostingList unify(const PostingList& a, const PostingList& b);

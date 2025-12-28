@@ -13,6 +13,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/Users/artemsorokin/Desktop/ir/lematization/lematization.cpp" "CMakeFiles/search_engine.dir/lematization/lematization.cpp.o" "gcc" "CMakeFiles/search_engine.dir/lematization/lematization.cpp.o.d"
   "/Users/artemsorokin/Desktop/ir/main.cpp" "CMakeFiles/search_engine.dir/main.cpp.o" "gcc" "CMakeFiles/search_engine.dir/main.cpp.o.d"
   "/Users/artemsorokin/Desktop/ir/mongo_client/mongo_client.cpp" "CMakeFiles/search_engine.dir/mongo_client/mongo_client.cpp.o" "gcc" "CMakeFiles/search_engine.dir/mongo_client/mongo_client.cpp.o.d"
+  "/Users/artemsorokin/Desktop/ir/statistic/statistic.cpp" "CMakeFiles/search_engine.dir/statistic/statistic.cpp.o" "gcc" "CMakeFiles/search_engine.dir/statistic/statistic.cpp.o.d"
   "/Users/artemsorokin/Desktop/ir/tokenizer.cpp" "CMakeFiles/search_engine.dir/tokenizer.cpp.o" "gcc" "CMakeFiles/search_engine.dir/tokenizer.cpp.o.d"
   )
 

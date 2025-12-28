@@ -5,11 +5,12 @@ db:
   db: "db"
 
 logic:
-  delay_time: "20s"
+  delay_time: "2s"
 
 kafka:
   brokers:
     - "kafka:9092"
-  group: "crawler-group"
+  yandex_consumer_group: "yandex-group"
+  ebay_consumer_group: "ebay-group"
   yandex_topic: "yandex_url-topic"
-  wb: "wb-url-topic"
+  ebay_topic: "ebay-url-topic"

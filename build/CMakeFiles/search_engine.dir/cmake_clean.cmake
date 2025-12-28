@@ -9,6 +9,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/search_engine.dir/main.cpp.o.d"
   "CMakeFiles/search_engine.dir/mongo_client/mongo_client.cpp.o"
   "CMakeFiles/search_engine.dir/mongo_client/mongo_client.cpp.o.d"
+  "CMakeFiles/search_engine.dir/statistic/statistic.cpp.o"
+  "CMakeFiles/search_engine.dir/statistic/statistic.cpp.o.d"
   "CMakeFiles/search_engine.dir/tokenizer.cpp.o"
   "CMakeFiles/search_engine.dir/tokenizer.cpp.o.d"
   "search_engine"

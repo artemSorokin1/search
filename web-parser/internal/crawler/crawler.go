@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
+	"net/http/cookiejar"
+	"strings"
 	"sync"
 	"time"
 	"web-parser/internal/config"
@@ -23,14 +26,12 @@ const (
 
 type ProductCrawler struct {
 	delay    time.Duration
-	producer *kafkaclient.Producer
 	consumer *kafkaclient.Consumer
 }
 
-func NewProductCrawler(cfg config.LogicConfig, consumer *kafkaclient.Consumer, producer *kafkaclient.Producer) *ProductCrawler {
+func NewProductCrawler(cfg config.LogicConfig, consumer *kafkaclient.Consumer) *ProductCrawler {
 	return &ProductCrawler{
 		consumer: consumer,
-		producer: producer,
 		delay:    cfg.DelayTime,
 	}
 }
@@ -67,42 +68,114 @@ func (pc *ProductCrawler) Get(readTopic string, mongoClient *storage.Client) {
 func (pc *ProductCrawler) makeRequestToCard(data kafkaclient.KafkaMsg, mongoClient *storage.Client) error {
 	time.Sleep(pc.delay)
 	fmt.Println("make request to url: ", data.Url)
+
 	links := GetLinks(data.Url)
 
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{
+		Timeout: pc.delay,
+		Jar:     jar,
+	}
+
+	fetchDoc := func(url string) (*goquery.Document, int, string, error) {
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return nil, 0, "", err
+		}
+
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36")
+		req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+		req.Header.Set("Accept-Language", "en-US,en;q=0.9,ru;q=0.8")
+		req.Header.Set("Cache-Control", "no-cache")
+		req.Header.Set("Pragma", "no-cache")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, 0, "", err
+		}
+
+		defer resp.Body.Close()
+
+		doc, err := goquery.NewDocumentFromReader(resp.Body)
+		if err != nil {
+			return nil, resp.StatusCode, resp.Request.URL.String(), err
+		}
+
+		return doc, resp.StatusCode, resp.Request.URL.String(), nil
+	}
+
+	isEbayAntibot := func(doc *goquery.Document) bool {
+		html, _ := doc.Html()
+		low := strings.ToLower(html)
+
+		return strings.Contains(low, "checking your browser") ||
+			strings.Contains(low, "enable javascript") ||
+			strings.Contains(low, "px-captcha") ||
+			strings.Contains(low, "datadome") ||
+			strings.Contains(low, "access denied")
+	}
+
 	for _, link := range links {
-		time.Sleep(pc.delay)
-		linkResp, err := http.Get(link)
-		if err != nil {
-			fmt.Println("error make request to link", err)
+		if strings.HasPrefix(link, utils.YandexMarket) {
+			time.Sleep(pc.delay)
+		} else {
+			time.Sleep(time.Duration(3+rand.Intn(7)) * time.Second)
 		}
 
-		doc, err := goquery.NewDocumentFromReader(linkResp.Body)
+		doc, status, finalURL, err := fetchDoc(link)
 		if err != nil {
-			fmt.Println("error read html text from link", err)
+			return fmt.Errorf("error fetching %s: %w", link, err)
 		}
-		// htmlText, err := doc.Html()
-		if err != nil {
-			fmt.Printf("error get source html text from url = %s", link)
-		}
+		fmt.Printf("fetched: %s status=%d final=%s\n", link, status, finalURL)
 
-		description := doc.Find(`[data-auto="product-description"]`).Text()
-		title := doc.Find(`h1[data-auto="productCardTitle"]`).Text()
-		var sourceName string
-		if link[:len(utils.YandexMarket)] == utils.YandexMarket {
+		var description, title, sourceName string
+
+		switch {
+		case strings.HasPrefix(link, utils.YandexMarket):
 			sourceName = "Яндекс Маркет"
+			description = strings.TrimSpace(doc.Find(`[data-auto="product-description"]`).Text())
+			title = strings.TrimSpace(doc.Find(`h1[data-auto="productCardTitle"]`).Text())
+
+		case strings.HasPrefix(link, utils.Ebay):
+			sourceName = "Ebay"
+
+			if isEbayAntibot(doc) {
+				return fmt.Errorf("ebay antibot page received for %s (final=%s, status=%d)", link, finalURL, status)
+			}
+
+			title = strings.TrimSpace(doc.Find("h1.x-item-title__mainTitle span").First().Text())
+			if title == "" {
+				title = strings.TrimSpace(doc.Find("h1").First().Text())
+			}
+
+			if src, ok := doc.Find("iframe#desc_ifr").Attr("src"); ok && src != "" {
+				iframeDoc, _, _, err := fetchDoc(src)
+				if err == nil {
+					description = strings.TrimSpace(iframeDoc.Find("#ds_div").Text())
+
+					if description == "" {
+						iframeDoc.Find("script, style, noscript").Remove()
+						description = strings.TrimSpace(iframeDoc.Find("body").Text())
+					}
+
+					description = strings.Join(strings.Fields(description), " ")
+				}
+			}
+
+		default:
+			continue
 		}
 
-		// normilizeUrl := utils.NormalizeUrl(link)
-		// fmt.Println(normilizeUrl)
-		// hashUrl := sha256.Sum256([]byte(normilizeUrl))
-		// stringHashUrl := hex.EncodeToString(hashUrl[:])
+		if title == "" {
+			continue
+		}
+
 		item := storage.Item{
 			Description: description,
 			Title:       title,
 			UrlHash:     utils.NormalizeUrl(link),
 			TimeOfLoad:  data.ParceTime,
-			// HtmlText:    htmlText,
-			SourceName: sourceName,
+			SourceName:  sourceName,
 		}
 
 		filter := bson.M{"url": item.UrlHash}
@@ -115,7 +188,7 @@ func (pc *ProductCrawler) makeRequestToCard(data kafkaclient.KafkaMsg, mongoClie
 			options.Replace().SetUpsert(true),
 		)
 		if err != nil {
-			return fmt.Errorf("error upserting item %s", err)
+			return fmt.Errorf("error upserting item: %w", err)
 		}
 	}
 
@@ -127,6 +200,9 @@ func (pc *ProductCrawler) makeRequestToCard(data kafkaclient.KafkaMsg, mongoClie
 }
 
 func GetLinks(mainLink string) []string {
+	if mainLink[:len(utils.Ebay)] == utils.Ebay {
+		return []string{mainLink}
+	}
 	resp, err := http.Get(mainLink)
 	if err != nil {
 		fmt.Println("error make request to mainLink", err)

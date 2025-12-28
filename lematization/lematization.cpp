@@ -11,7 +11,6 @@ bool Lematization::isLatin(const std::string& s) const {
                 return false;
             }
         } else {
-            // есть не-ASCII байты -> не чисто английское слово
             return false;
         }
     }
@@ -21,7 +20,6 @@ bool Lematization::isLatin(const std::string& s) const {
 std::string Lematization::stemEnglish(const std::string& w) const {
     std::string s = w;
 
-    // очень простой стеммер: убираем типичные окончания
     if (s.size() > 4 && s.substr(s.size() - 3) == "ing") {
         s.erase(s.size() - 3);
     } else if (s.size() > 3 && s.substr(s.size() - 2) == "ed") {
@@ -36,22 +34,15 @@ std::string Lematization::stemEnglish(const std::string& w) const {
 std::string Lematization::stemRussian(const std::string& w) const {
     std::string s = w;
 
-    // Упрощённый список русских окончаний (UTF-8).
-    // Важно: сначала более длинные.
     static const char* suffixes[] = {
-        // 6–4 "буквенные" суффиксы (в байтах может быть больше из-за UTF-8)
         "остью", "остям", "остях",
         "иями", "ьими",
         "шего", "щего", "шему", "щему", "шим", "щим", "шая", "щая", "шее", "щее",
-
-        // глагольные суффиксы (инф. + формы)
         "овать", "ывать", "ивать",
         "ать", "ять", "ять", "еть", "ить",
         "ешь", "ешься", "ете", "етесь", "ем", "ете",
         "лся", "лась", "лись", "лось",
         "ешь", "ют", "ут", "ит", "ат", "ят",
-
-        // прилагательные (полные и краткие)
         "ыми", "ими",
         "ого", "его",
         "ому", "ему",
@@ -61,8 +52,6 @@ std::string Lematization::stemRussian(const std::string& w) const {
         "ая", "яя",
         "ое", "ее",
         "ые", "ие",
-
-        // существительные (склонение, множ. число)
         "ами", "ями",
         "ов", "ев", "ёв",
         "ям", "ам",
@@ -72,8 +61,6 @@ std::string Lematization::stemRussian(const std::string& w) const {
         "ия", "ья",
         "ей", "ой", "ей",
         "ье", "ие",
-
-        // короткие окончания (одна "буква", но несколько байт)
         "у", "ю",
         "е", "ё",
         "а", "я",
@@ -84,7 +71,7 @@ std::string Lematization::stemRussian(const std::string& w) const {
 
     for (size_t i = 0; i < suffixCount; ++i) {
         const std::string suf = suffixes[i];
-        if (s.size() > suf.size() + 1 &&      // чтобы не снижать слово до 1 буквы
+        if (s.size() > suf.size() + 1 &&
             s.size() >= suf.size() &&
             s.compare(s.size() - suf.size(), suf.size(), suf) == 0) {
             s.erase(s.size() - suf.size());
@@ -98,12 +85,10 @@ std::string Lematization::stemRussian(const std::string& w) const {
 std::string Lematization::lemmatizeToken(const std::string& token) const {
     if (token.empty()) return token;
 
-    // чистый английский -> английский стеммер
     if (isLatin(token)) {
         return stemEnglish(token);
     }
 
-    // всё остальное (русский/смешанное) -> русский стеммер
     return stemRussian(token);
 }
 
@@ -118,4 +103,4 @@ std::vector<std::string> Lematization::lemmatizeTokens(
     return result;
 }
 
-} 
+}

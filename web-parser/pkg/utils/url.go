@@ -2,6 +2,7 @@ package utils
 
 const (
 	YandexMarket = "https://market.yandex.ru"
+	Ebay         = "https://www.ebay.com"
 )
 
 func NormalizeUrl(url string) string {

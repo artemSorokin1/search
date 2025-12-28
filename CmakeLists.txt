@@ -20,6 +20,7 @@ add_executable(search_engine
     boolean_index/boolean_index.cpp
     lematization/lematization.cpp
     tokenizer.cpp
+    statistic/statistic.cpp
 )
 
 target_link_libraries(search_engine
@@ -27,6 +28,6 @@ target_link_libraries(search_engine
     bsoncxx
 )
 
-// cd build
-// make -j4
-// ./search_engine
+# cd build
+# make -j4
+# ./search_engine

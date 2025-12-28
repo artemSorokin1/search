@@ -249,6 +249,30 @@ mongo_client/mongo_client.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_engine.dir/build.make CMakeFiles/search_engine.dir/mongo_client/mongo_client.cpp.s
 .PHONY : mongo_client/mongo_client.cpp.s
 
+statistic/statistic.o: statistic/statistic.cpp.o
+.PHONY : statistic/statistic.o
+
+# target to build an object file
+statistic/statistic.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_engine.dir/build.make CMakeFiles/search_engine.dir/statistic/statistic.cpp.o
+.PHONY : statistic/statistic.cpp.o
+
+statistic/statistic.i: statistic/statistic.cpp.i
+.PHONY : statistic/statistic.i
+
+# target to preprocess a source file
+statistic/statistic.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_engine.dir/build.make CMakeFiles/search_engine.dir/statistic/statistic.cpp.i
+.PHONY : statistic/statistic.cpp.i
+
+statistic/statistic.s: statistic/statistic.cpp.s
+.PHONY : statistic/statistic.s
+
+# target to generate assembly for a file
+statistic/statistic.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/search_engine.dir/build.make CMakeFiles/search_engine.dir/statistic/statistic.cpp.s
+.PHONY : statistic/statistic.cpp.s
+
 tokenizer.o: tokenizer.cpp.o
 .PHONY : tokenizer.o
 
@@ -297,6 +321,9 @@ help:
 	@echo "... mongo_client/mongo_client.o"
 	@echo "... mongo_client/mongo_client.i"
 	@echo "... mongo_client/mongo_client.s"
+	@echo "... statistic/statistic.o"
+	@echo "... statistic/statistic.i"
+	@echo "... statistic/statistic.s"
 	@echo "... tokenizer.o"
 	@echo "... tokenizer.i"
 	@echo "... tokenizer.s"

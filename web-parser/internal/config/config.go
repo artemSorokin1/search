@@ -25,10 +25,11 @@ type LogicConfig struct {
 }
 
 type KafkaConfig struct {
-	Brokers     []string `yaml:"brokers"`
-	Group       string   `yaml:"group"`
-	YandexTopic string   `yaml:"yandex_topic"`
-	WBTopic     string   `yaml:"wb_topic"`
+	Brokers             []string `yaml:"brokers"`
+	YandexConsumerGroup string   `yaml:"yandex_consumer_group"`
+	EbayConsumerGroup   string   `yaml:"ebay_consumer_group"`
+	YandexTopic         string   `yaml:"yandex_topic"`
+	EbayTopic           string   `yaml:"ebay_topic"`
 }
 
 func LoadConfig() *Config {

@@ -9,10 +9,8 @@ class Lematization {
 public:
     Lematization() = default;
 
-    // Лемматизация одного токена
     std::string lemmatizeToken(const std::string& token) const;
 
-    // Лемматизация набора токенов
     std::vector<std::string> lemmatizeTokens(const std::vector<std::string>& tokens) const;
 
 private:
@@ -21,4 +19,4 @@ private:
     std::string stemRussian(const std::string& w) const;
 };
 
-} 
+}

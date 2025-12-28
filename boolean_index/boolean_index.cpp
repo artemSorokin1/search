@@ -1,154 +1,179 @@
 #include "boolean_index.hpp"
+
 #include <algorithm>
-#include <unordered_set>
+#include <fstream>
+#include <sstream>
 
 namespace search {
 
-void BooleanIndex::addDocument(DocId id, const std::string& text) {
-    // 1. Токенизация
-    auto tokens = tok_.tokenize(text);
+BooleanIndex::BooleanIndex(const std::string& index_file_path)
+    : index_file_path_(index_file_path) {}
 
-    // 2. Лемматизация
+void BooleanIndex::addDocument(DocId id, const std::string& text) {
+    auto tokens = tok_.tokenize(text);
     auto lemmas = lem_.lemmatizeTokens(tokens);
 
-    // 3. Для булева индекса достаточно факта наличия терма в документе,
-    //    поэтому внутри документа делаем множество уникальных лемм.
-    std::unordered_set<std::string> uniqueLemma(lemmas.begin(), lemmas.end());
+    std::sort(lemmas.begin(), lemmas.end());
+    lemmas.erase(std::unique(lemmas.begin(), lemmas.end()), lemmas.end());
 
-    // 4. Добавляем DocId в postings-list каждой леммы
-    for (const auto& l : uniqueLemma) {
-        index_[l].push_back(id);
+    for (auto& l : lemmas) {
+        if (!l.empty()) {
+            temp_pairs_.emplace_back(std::move(l), id);
+        }
     }
 }
 
 void BooleanIndex::finalize() {
-    // Для каждой леммы:
-    // - сортируем список docId
-    // - удаляем возможные дубликаты (на всякий случай)
-    for (auto& [lemma, postings] : index_) {
-        std::sort(postings.begin(), postings.end());
-        postings.erase(std::unique(postings.begin(), postings.end()), postings.end());
+    index_.clear();
+    if (temp_pairs_.empty()) {
+        saveToFile();
+        return;
+    }
+
+    std::sort(temp_pairs_.begin(), temp_pairs_.end(),
+              [](const auto& A, const auto& B) {
+                  if (A.first != B.first) return A.first < B.first;
+                  return A.second < B.second;
+              });
+
+    temp_pairs_.erase(std::unique(temp_pairs_.begin(), temp_pairs_.end()),
+                      temp_pairs_.end());
+
+    for (const auto& [lemma, id] : temp_pairs_) {
+        if (index_.empty() || index_.back().first != lemma) {
+            index_.push_back({lemma, PostingList{}});
+        }
+        index_.back().second.push_back(id);
+    }
+
+    saveToFile();
+
+    temp_pairs_.clear();
+}
+
+void BooleanIndex::saveToFile() const {
+    std::ofstream out(index_file_path_);
+    if (!out.is_open()) return;
+
+    for (const auto& [lemma, postings] : index_) {
+        out << lemma;
+        for (DocId id : postings) {
+            out << " " << id;
+        }
+        out << "\n";
     }
 }
 
-const PostingList* BooleanIndex::getPostings(const std::string& lemma) const {
-    auto it = index_.find(lemma);
-    if (it == index_.end()) return nullptr;
-    return &it->second;
+PostingList BooleanIndex::getPostings(const std::string& lemma) const {
+    if (!index_.empty()) {
+        auto it = std::lower_bound(
+            index_.begin(), index_.end(), lemma,
+            [](const auto& entry, const std::string& key) {
+                return entry.first < key;
+            });
+
+        if (it != index_.end() && it->first == lemma) {
+            return it->second;
+        }
+        return {};
+    }
+
+    return loadPostingsFromFile(lemma);
 }
 
-// Вспомогательная функция: пересечение двух отсортированных списков
+PostingList BooleanIndex::loadPostingsFromFile(const std::string& lemma) const {
+    std::ifstream in(index_file_path_);
+    if (!in.is_open()) {
+        return {};
+    }
+
+    std::string line;
+    while (std::getline(in, line)) {
+        if (line.empty()) continue;
+
+        std::istringstream iss(line);
+        std::string cur;
+        iss >> cur;
+
+        if (cur == lemma) {
+            PostingList postings;
+            DocId id;
+            while (iss >> id) postings.push_back(id);
+            return postings;
+        }
+        if (cur > lemma) break;
+    }
+    return {};
+}
+
 PostingList BooleanIndex::intersect(const PostingList& a, const PostingList& b) {
     PostingList res;
     res.reserve(std::min(a.size(), b.size()));
 
     std::size_t i = 0, j = 0;
     while (i < a.size() && j < b.size()) {
-        if (a[i] == b[j]) {
-            res.push_back(a[i]);
-            ++i; ++j;
-        } else if (a[i] < b[j]) {
-            ++i;
-        } else {
-            ++j;
-        }
+        if (a[i] == b[j]) { res.push_back(a[i]); ++i; ++j; }
+        else if (a[i] < b[j]) ++i;
+        else ++j;
     }
     return res;
 }
 
-// Вспомогательная функция: объединение двух отсортированных списков
 PostingList BooleanIndex::unify(const PostingList& a, const PostingList& b) {
     PostingList res;
     res.reserve(a.size() + b.size());
 
     std::size_t i = 0, j = 0;
     while (i < a.size() && j < b.size()) {
-        if (a[i] == b[j]) {
-            res.push_back(a[i]);
-            ++i; ++j;
-        } else if (a[i] < b[j]) {
-            res.push_back(a[i]);
-            ++i;
-        } else {
-            res.push_back(b[j]);
-            ++j;
-        }
+        if (a[i] == b[j]) { res.push_back(a[i]); ++i; ++j; }
+        else if (a[i] < b[j]) { res.push_back(a[i]); ++i; }
+        else { res.push_back(b[j]); ++j; }
     }
-
-    while (i < a.size()) {
-        res.push_back(a[i++]);
-    }
-    while (j < b.size()) {
-        res.push_back(b[j++]);
-    }
+    while (i < a.size()) res.push_back(a[i++]);
+    while (j < b.size()) res.push_back(b[j++]);
     return res;
 }
 
-// Простейший AND-запрос: все термины должны присутствовать в документе
 std::vector<DocId> BooleanIndex::andQuery(const std::vector<std::string>& terms) const {
     if (terms.empty()) return {};
 
-    // 1. Лемматизируем термы запроса
     std::vector<std::string> lemmas;
     lemmas.reserve(terms.size());
-    for (const auto& t : terms) {
-        lemmas.push_back(lem_.lemmatizeToken(t));
-    }
+    for (const auto& t : terms) lemmas.push_back(lem_.lemmatizeToken(t));
 
-    // 2. Берём postings первого терма как старт
-    const PostingList* current = nullptr;
-    PostingList tmpResult;
+    PostingList tmp;
+    bool first = true;
 
     for (const auto& lemma : lemmas) {
-        const PostingList* pl = getPostings(lemma);
-        if (!pl) {
-            // Если хотя бы один терм не встречается вообще,
-            // результат AND-поиска пустой
-            return {};
-        }
+        PostingList pl = getPostings(lemma);
+        if (pl.empty()) return {};
 
-        if (!current) {
-            current = pl;
-            tmpResult = *pl; // копия
-        } else {
-            tmpResult = intersect(tmpResult, *pl);
-        }
+        if (first) { tmp = std::move(pl); first = false; }
+        else { tmp = intersect(tmp, pl); }
 
-        if (tmpResult.empty()) {
-            return {};
-        }
+        if (tmp.empty()) return {};
     }
-
-    return tmpResult;
+    return tmp;
 }
 
-// Простейший OR-запрос: хотя бы один терм встречается в документе
 std::vector<DocId> BooleanIndex::orQuery(const std::vector<std::string>& terms) const {
     if (terms.empty()) return {};
 
     std::vector<std::string> lemmas;
     lemmas.reserve(terms.size());
-    for (const auto& t : terms) {
-        lemmas.push_back(lem_.lemmatizeToken(t));
-    }
+    for (const auto& t : terms) lemmas.push_back(lem_.lemmatizeToken(t));
 
     PostingList result;
-
     bool hasAny = false;
+
     for (const auto& lemma : lemmas) {
-        const PostingList* pl = getPostings(lemma);
-        if (!pl) continue;
+        PostingList pl = getPostings(lemma);
+        if (pl.empty()) continue;
 
-        if (!hasAny) {
-            result = *pl;
-            hasAny = true;
-        } else {
-            result = unify(result, *pl);
-        }
+        if (!hasAny) { result = std::move(pl); hasAny = true; }
+        else { result = unify(result, pl); }
     }
-
-    if (!hasAny) return {};
-    return result;
+    return hasAny ? result : PostingList{};
 }
 
-} // namespace search
+}

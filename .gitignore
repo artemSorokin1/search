@@ -3,3 +3,6 @@ mongo-cxx-driver
 .vscode
 ir
 .idea
+build
+lemmas.txt
+index.txt

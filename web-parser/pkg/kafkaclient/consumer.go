@@ -72,7 +72,6 @@ func (c *Consumer) Read(topic string, recivedChan chan<- KafkaMsg) {
 	for {
 		jsonMsg, err := c.consumer.ReadMessage(-1)
 		if err != nil {
-			// если это временная ошибка — логируем и продолжаем
 			log.Printf("error reading data %s", err)
 			time.Sleep(5 * time.Second)
 			continue
